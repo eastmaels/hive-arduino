@@ -8,9 +8,12 @@ const TO_DEGREES = 180
 const ACCOUNT_NAME = 'east.autovote'
 const BLOCK_GET_INTERVAL = 2500;
 const GLOBAL_GET_INTERVAL = 3000;
+const RPC_URL = 'https://anyx.io';
 
 var five = require("johnny-five");
 var board = new five.Board({ port: "COM3" });
+
+hive.api.setOptions({ url: RPC_URL });
 
 function handler() {
   console.log('move complete')
@@ -49,31 +52,27 @@ board.on("ready", function() {
 
   setInterval(function () {
     if (current_block < end_block) {
-      hive.api.getOpsInBlock(current_block, false, async function (err, result) {
+      hive.api.getBlock(current_block, async function (err, result) {
         if (err) {
           console.log('get block error', err);
           return;
         }
-        console.log('result', result)
         // process un-empty blocks only
-        if (!_.isEmpty(result)) {
-          result.forEach(async tx => {
-            console.log('tx', tx)
-            let { block, timestamp, op, trx_id } = tx;
+        if (!_.isEmpty(result) && !_.isEmpty(result.transactions)) {
+          let { transactions } = result;
+          transactions.forEach(async tx => {
+            let { operations } = tx;
 
-            let block_num = block;
-            let tx_type = op[0];
-            let tx_data = op[1];
-
-            if (tx_type === "transfer") {
-              console.log('transfer', tx)
-
-              if (tx_data.to == ACCOUNT_NAME) {
-                console.log("received transfer from: ", tx_data.from)
-                servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
-                setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+            operations.forEach(async operation => {
+              let [ tx_type, tx_data ] = operation;
+              if (tx_type === "transfer") {
+                if (tx_data.to == ACCOUNT_NAME) {
+                  console.log("received transfer from: ", tx_data.from)
+                  servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
+                  setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+                }
               }
-            }
+            });
           });
         }
       });
