@@ -1,18 +1,16 @@
-const dsteem = require("dsteem")
-const es = require("event-stream")
+const hive = require("@hiveio/hive-js")
+const _ = require("lodash")
 
 const MILLI_SECONDS_TO_COMPLETE = 3000
 const MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER = MILLI_SECONDS_TO_COMPLETE + 500
 const HOME_DEGREES = 0
 const TO_DEGREES = 180
 const ACCOUNT_NAME = 'east.autovote'
-
-// Steem Init
-const client = new dsteem.Client('https://api.steemit.com')
-const stream = client.blockchain.getOperationsStream()
+const BLOCK_GET_INTERVAL = 2500;
+const GLOBAL_GET_INTERVAL = 3000;
 
 var five = require("johnny-five");
-var board = new five.Board({ port: "COM6" });
+var board = new five.Board({ port: "COM3" });
 
 function handler() {
   console.log('move complete')
@@ -23,6 +21,9 @@ function returnToHome(servo){
     servo.to(HOME_DEGREES, MILLI_SECONDS_TO_COMPLETE);
   }
 }
+
+let end_block = 0;
+let current_block = 0;
 
 board.on("ready", function() {
   var servo = new five.Servo({
@@ -35,7 +36,53 @@ board.on("ready", function() {
     servo: servo
   });
 
-  // Stream Steem Blockchain
+  setInterval(function () {
+    hive.api.getDynamicGlobalProperties(function (err, result) {
+      if (!_.isEmpty(result)) {
+        if (current_block === 0) {
+          current_block = result.head_block_number;
+        }
+        end_block = result.head_block_number;
+      }
+    });
+  }, GLOBAL_GET_INTERVAL);
+
+  setInterval(function () {
+    if (current_block < end_block) {
+      hive.api.getOpsInBlock(current_block, false, async function (err, result) {
+        if (err) {
+          console.log('get block error', err);
+          return;
+        }
+        console.log('result', result)
+        // process un-empty blocks only
+        if (!_.isEmpty(result)) {
+          result.forEach(async tx => {
+            console.log('tx', tx)
+            let { block, timestamp, op, trx_id } = tx;
+
+            let block_num = block;
+            let tx_type = op[0];
+            let tx_data = op[1];
+
+            if (tx_type === "transfer") {
+              console.log('transfer', tx)
+
+              if (tx_data.to == ACCOUNT_NAME) {
+                console.log("received transfer from: ", tx_data.from)
+                servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
+                setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+              }
+            }
+          });
+        }
+      });
+      current_block = current_block + 1;
+    }
+  }, BLOCK_GET_INTERVAL);
+
+  /* Old codes
+  // Stream Blockchain
   stream.on('data', async operation => {
     // Look for comment type of transaction
     if (operation.op[0] == 'transfer') {
@@ -46,5 +93,6 @@ board.on("ready", function() {
       }
     }
   })  // end: stream.on()
+  */
 
 });
