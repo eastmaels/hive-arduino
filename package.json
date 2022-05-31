@@ -20,11 +20,11 @@
   },
   "homepage": "https://github.com/eastmaels/arduino-test#readme",
   "dependencies": {
-    "@hiveio/hive-js": "^0.8.10",
+    "@hiveio/hive-js": "^2.0.4",
     "dsteem": "^0.11.0",
     "event-stream": "3.3.4",
     "johnny-five": "^1.0.0",
-    "lodash": "^4.17.20",
+    "lodash": "^4.17.21",
     "node-wav-player": "^0.1.0",
     "opn": "^5.4.0",
     "serialport": "^9.0.2",
