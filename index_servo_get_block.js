@@ -52,36 +52,38 @@ board.on("ready", function() {
 
   setInterval(function () {
     if (current_block < end_block) {
-      hive.api.getOpsInBlock(current_block, false, async function (err, result) {
+      hive.api.getBlock(current_block, async function (err, result) {
         if (err) {
           console.log('get block error', err);
           return;
         }
-
         // process un-empty blocks only
-        if (result && result.length > 0) {
-          result.forEach(tx => {
-            let tx_type = tx.op[0];
-            let tx_data = tx.op[1];
+        if (!_.isEmpty(result) && !_.isEmpty(result.transactions)) {
+          let { transactions } = result;
+          transactions.forEach(async tx => {
+            let { operations } = tx;
 
-            const isTransferTx = (tx_type === 'transfer')
-            const isTransferToAccount = (tx_data.to === ACCOUNT_NAME)
+            operations.forEach(async operation => {
+              let [ tx_type, tx_data ] = operation;
 
-            // Look for transfer transaction and is transfer to target account
-            if (isTransferTx && isTransferToAccount) {
-              console.log("received transfer from: ", tx_data.from)
-              console.log('is transfer transaction to target account...')
+              const isTransferTx = (tx_type === 'transfer')
+              const isTransferToAccount = (tx_data.to === ACCOUNT_NAME)
 
-              const isOneHive = (tx_data.amount === '1.000 HIVE')
-              const isOneHbd = (tx_data.amount === '1.000 HBD')
-              const containsMemo = (tx_data.memo && tx_data.memo.toLowerCase().indexOf('feed cat') >= 0)
+              // Look for transfer transaction and is transfer to target account
+              if (isTransferTx && isTransferToAccount) {
+                console.log("received transfer from: ", tx_data.from)
+                console.log('is transfer transaction to target account...')
 
-              if (isOneHive || isOneHbd) {
-                servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
-                setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+                const isOneHive = (tx_data.amount === '1.000 HIVE')
+                const isOneHbd = (tx_data.amount === '1.000 HBD')
+                const containsMemo = (tx_data.memo && tx_data.memo.toLowerCase().indexOf('feed cat') >= 0)
+
+                if (isOneHive || isOneHbd) {
+                  servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
+                  setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+                }
               }
-            }
-
+            });
           });
         }
       });
