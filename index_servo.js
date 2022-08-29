@@ -76,10 +76,18 @@ board.on("ready", function() {
               const isOneHbd = (tx_data.amount === '1.000 HBD')
               const containsMemo = (tx_data.memo && tx_data.memo.toLowerCase().indexOf('feed cat') >= 0)
 
-              if (isOneHive || isOneHbd) {
-                servo.to(TO_DEGREES, MILLI_SECONDS_TO_COMPLETE);
-                setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+              const amtNum = parseFloat(tx_data.amount.split(' ')[0]);
+
+              if (amtNum >= 0.1 && amtNum < 0.2) {
+                servo.to(60, MILLI_SECONDS_TO_COMPLETE);
+              } else if (amtNum >= 0.2 && amtNum < 0.3) {
+                servo.to(80, MILLI_SECONDS_TO_COMPLETE);
+              } else if (amtNum >= 0.3) {
+                servo.to(90, MILLI_SECONDS_TO_COMPLETE);
               }
+
+              setTimeout(returnToHome.bind(null, servo), MILLI_SECONDS_TO_COMPLETE_WITH_BUFFER);
+
             }
 
           });
